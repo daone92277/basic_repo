@@ -12,133 +12,30 @@ class JobMonitorGUI(QWidget):
 
         self.share_name = azure_share_name
         self.sas_token = azure_sas_token
+        self.service = ShareServiceClient(account_url=f"https://{self.share_name}.file.core.windows.net", credential=self.sas_token)
 
         self.init_ui()
 
-    def init_ui(self):
-        layout = QVBoxLayout()
-
-        self.status_labels = []
-        self.status_icons = []
-        self.last_run_labels = []
-
-        self.job_names = self.get_job_names()
-
-        for job_name in self.job_names:
-            label = QLabel(f"{job_name}: Checking...")
-            icon = QLabel()
-            last_run_label = QLabel()
-
-            self.status_labels.append(label)
-            self.status_icons.append(icon)
-            self.last_run_labels.append(last_run_label)
-
-            layout.addWidget(icon)
-            layout.addWidget(label)
-            layout.addWidget(last_run_label)
-
-        check_button = QPushButton("Check Status")
-        check_button.clicked.connect(self.check_status)
-        layout.addWidget(check_button)
-
-        self.log_browser = QTextBrowser()
-        layout.addWidget(self.log_browser)
-
-        self.setLayout(layout)
-        self.setWindowTitle('Job Monitor')
-        self.show()
-
-    def get_job_names(self):
-        try:
-            service = ShareServiceClient(account_url=f"https://{self.share_name}.file.core.windows.net", credential=self.sas_token)
-            share_client = service.get_share_client(self.share_name)
-            directory_client = share_client.get_directory_client()  # Use the root directory client
-
-            items = list(directory_client.list_directories_and_files())  # Get a list of directories and files
-
-            # Filter only directories
-            directories = [item.name for item in items if item.is_directory]
-
-            return directories
-        except Exception as e:
-            print(f"Error getting job names: {e}")
-            return []
-
+    # ... (rest of the code remains the same)
 
     def check_status(self):
+        # Move the service initialization here
+        share_client = self.service.get_share_client(self.share_name)
+
         for index, job_name in enumerate(self.job_names):
-            log_file_name = f"{job_name}_{datetime.date.today()}.log"
-            file_path = f"{datetime.date.today()}/{log_file_name}"
-
-            try:
-                share_client = service.get_share_client(self.share_name)
-                file_client = share_client.get_file_client(file_path)
-                file_properties = file_client.get_file_properties()
-
-                if file_properties:
-                    status_text = f"{job_name}: Job ran successfully."
-                    pixmap = QPixmap('checkmark.png')
-                else:
-                    status_text = f"{job_name}: Job did not run. Alert sent!"
-                    self.send_notification(job_name, datetime.date.today())
-                    pixmap = QPixmap('exclamation.png')
-            except Exception as e:
-                status_text = f"{job_name}: Error checking status. {e}"
-                pixmap = QPixmap('error.png')
-
-            last_run_time = self.get_last_run_time(job_name)
-
-            self.status_labels[index].setText(status_text)
-            self.status_icons[index].setPixmap(pixmap)
-            self.last_run_labels[index].setText(f"Last Run: {last_run_time}")
-
-            self.log_browser.append(f"{datetime.datetime.now()} - {status_text}")
+            # rest of the method code remains the same
 
     def get_last_run_time(self, job_name):
-        try:
-            share_client = service.get_share_client(self.share_name)
-            directory_client = share_client.get_directory_client(job_name)
-            files = [item.name for item in directory_client.list_files()]
+        # Move the service initialization here
+        share_client = self.service.get_share_client(self.share_name)
+        # rest of the method code remains the same
 
-            if files:
-                # Assuming the log files are named with a timestamp, extract the timestamp from the last file
-                last_log_file = sorted(files)[-1]
-                timestamp_str = last_log_file.split('_')[1].split('.')[0]  # Extract timestamp from file name
-                timestamp = datetime.datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
-                return timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                return "N/A"
-        except Exception as e:
-            print(f"Error getting last run time for {job_name}: {e}")
-            return "N/A"
-
-    def send_notification(self, job_name, date):
-        # Replace these placeholders with your email configuration
-        smtp_server = 'your_smtp_server'
-        smtp_port = 587
-        smtp_username = 'your_username'
-        smtp_password = 'your_password'
-        sender_email = 'your_email@example.com'
-        receiver_email = 'team@example.com'
-
-        subject = f"Job Alert: {job_name} did not run on {date}"
-        body = f"The log file for {job_name} on {date} is missing. Please investigate."
-
-        msg = MIMEText(body)
-        msg['Subject'] = subject
-        msg['From'] = sender_email
-        msg['To'] = receiver_email
-
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_username, smtp_password)
-            server.sendmail(sender_email, [receiver_email], msg.as_string())
+    # rest of the class remains the same
 
 # Example usage
 azure_share_name = "ueprd28file01/prd/NewCo/Logs"
 azure_sas_token = "sv=2021-06-08&ss=bfqt&srt=sco&sp=rwlacupitfx&se=2024-02-27T23:16:48Z&st=2023-02-27T15:16:48Z&spr=https&sig=nS46%2FwdUg%2B%2F6kprU%2BJiIRuOiSH7menDH8R5VyTuWlA4%3D"
 
 app = QApplication([])
-service = ShareServiceClient(account_url=azure_share_name, credential=azure_sas_token)
 window = JobMonitorGUI(azure_share_name, azure_sas_token)
 app.exec_()
