@@ -1,0 +1,75 @@
+import os
+import datetime
+import smtplib
+from email.mime.text import MIMEText
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton
+from azure.storage.fileshare import ShareServiceClient
+
+class JobMonitorGUI(QWidget):
+    def __init__(self, share_name, sas_token):
+        super().__init__()
+
+        self.share_name = share_name
+        self.sas_token = sas_token
+
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        self.status_labels = []
+
+        self.job_names = self.get_job_names()
+
+        for job_name in self.job_names:
+            label = QLabel(f"{job_name}: Checking...")
+            self.status_labels.append(label)
+            layout.addWidget(label)
+
+        check_button = QPushButton("Check Status")
+        check_button.clicked.connect(self.check_status)
+        layout.addWidget(check_button)
+
+        self.setLayout(layout)
+        self.setWindowTitle('Job Monitor')
+        self.show()
+
+    def get_job_names(self):
+        service = ShareServiceClient(account_url=f"https://{self.share_name}.file.core.windows.net", credential=self.sas_token)
+        share_client = service.get_share_client(self.share_name)
+        directories = [item.name for item in share_client.get_directory_client().list_directories()]
+
+        return directories
+
+    def check_status(self):
+        for index, job_name in enumerate(self.job_names):
+            log_file_name = f"{job_name}_{datetime.date.today()}.log"
+            file_path = f"{datetime.date.today()}/{log_file_name}"
+
+            try:
+                share_client = service.get_share_client(self.share_name)
+                file_client = share_client.get_file_client(file_path)
+                file_properties = file_client.get_file_properties()
+
+                if file_properties:
+                    status_text = f"{job_name}: Job ran successfully."
+                else:
+                    status_text = f"{job_name}: Job did not run. Alert sent!"
+                    self.send_notification(job_name, datetime.date.today())
+            except Exception as e:
+                status_text = f"{job_name}: Error checking status. {e}"
+
+            self.status_labels[index].setText(status_text)
+
+    def send_notification(self, job_name, date):
+        # Sending email notification logic here...
+        pass
+
+# Example usage
+azure_share_name = "your_share_name"
+azure_sas_token = "your_sas_token"
+
+app = QApplication([])
+service = ShareServiceClient(account_url=f"https://{azure_share_name}.file.core.windows.net", credential=azure_sas_token)
+window = JobMonitorGUI(azure_share_name, azure_sas_token)
+app.exec_()
