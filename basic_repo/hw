@@ -1,8 +1,3 @@
-I apologize for the confusion. It looks like there was a mistake in my previous responses. The `SharedDirectoryClient` class in the Azure Storage File Share SDK does not have a method named `list_directories`. I appreciate your patience.
-
-Here's the corrected code using `SharedDirectoryClient`:
-
-```python
 import os
 import datetime
 import smtplib
@@ -54,14 +49,21 @@ class JobMonitorGUI(QWidget):
         self.show()
 
     def get_job_names(self):
+    try:
         service = ShareServiceClient(account_url=f"https://{self.share_name}.file.core.windows.net", credential=self.sas_token)
         share_client = service.get_share_client(self.share_name)
-        
-        # Use SharedDirectoryClient to list directories
-        directory_client = share_client.get_directory_client()
-        directories = [item.name for item in directory_client.list_directories()]
+        directory_client = share_client.get_directory_client()  # Use the root directory client
+
+        items = list(directory_client.list_directories_and_files())  # Get a list of directories and files
+
+        # Filter only directories
+        directories = [item.name for item in items if item.is_directory]
 
         return directories
+    except Exception as e:
+        print(f"Error getting job names: {e}")
+        return []
+
 
     def check_status(self):
         for index, job_name in enumerate(self.job_names):
@@ -93,8 +95,21 @@ class JobMonitorGUI(QWidget):
             self.log_browser.append(f"{datetime.datetime.now()} - {status_text}")
 
     def get_last_run_time(self, job_name):
-        # Implement logic to get the last run time for a job
-        # You may need to query a database or use a timestamp file
+    try:
+        share_client = service.get_share_client(self.share_name)
+        directory_client = share_client.get_directory_client(job_name)
+        files = [item.name for item in directory_client.list_files()]
+
+        if files:
+            # Assuming the log files are named with a timestamp, extract the timestamp from the last file
+            last_log_file = sorted(files)[-1]
+            timestamp_str = last_log_file.split('_')[1].split('.')[0]  # Extract timestamp from file name
+            timestamp = datetime.datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+            return timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return "N/A"
+    except Exception as e:
+        print(f"Error getting last run time for {job_name}: {e}")
         return "N/A"
 
     def send_notification(self, job_name, date):
@@ -127,6 +142,3 @@ app = QApplication([])
 service = ShareServiceClient(account_url=f"https://{azure_share_name}.file.core.windows.net", credential=azure_sas_token)
 window = JobMonitorGUI(azure_share_name, azure_sas_token)
 app.exec_()
-```
-
-I appreciate your understanding, and I hope this resolves the issue.
