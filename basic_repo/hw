@@ -62,12 +62,30 @@ class JobMonitorGUI(QWidget):
             self.status_labels[index].setText(status_text)
 
     def send_notification(self, job_name, date):
-        # Sending email notification logic here...
-        pass
+        # Replace these placeholders with your email configuration
+        smtp_server = 'your_smtp_server'
+        smtp_port = 587
+        smtp_username = 'your_username'
+        smtp_password = 'your_password'
+        sender_email = 'your_email@example.com'
+        receiver_email = 'team@example.com'
+
+        subject = f"Job Alert: {job_name} did not run on {date}"
+        body = f"The log file for {job_name} on {date} is missing. Please investigate."
+
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.sendmail(sender_email, [receiver_email], msg.as_string())
 
 # Example usage
-azure_share_name = "your_share_name"
-azure_sas_token = "your_sas_token"
+azure_share_name = "ueprd28file01"
+azure_sas_token = "sv=2021-06-08&ss=bfqt&srt=sco&sp=rwlacupitfx&se=2024-02-27T23:16:48Z&st=2023-02-27T15:16:48Z&spr=https&sig=nS46%2FwdUg%2B%2F6kprU%2BJiIRuOiSH7menDH8R5VyTuWlA4%3D"
 
 app = QApplication([])
 service = ShareServiceClient(account_url=f"https://{azure_share_name}.file.core.windows.net", credential=azure_sas_token)
